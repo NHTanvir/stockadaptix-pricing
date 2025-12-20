@@ -199,7 +199,7 @@ class AdminSettingsModule {
 	 * Section callback
 	 */
 	public function section_callback() {
-		echo '<p>' . __( 'Configure how stock levels affect product pricing.', 'dynamic-stock-pricing' ) . '</p>';
+		echo '<p>' . esc_html__( 'Configure how stock levels affect product pricing.', 'dynamic-stock-pricing' ) . '</p>';
 	}
 
 	/**
