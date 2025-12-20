@@ -11,6 +11,7 @@
  * Tested up to: 6.4
  * WC requires at least: 5.0
  * WC tested up to: 8.0
+ * Requires Plugins: woocommerce
  */
 
 // Exit if accessed directly
