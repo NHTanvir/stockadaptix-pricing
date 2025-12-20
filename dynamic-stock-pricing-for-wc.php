@@ -5,7 +5,7 @@
  * Version: 1.0.0
  * Author: Naymul Hasan Tanvir
  * License: GPL v2 or later
- * Text Domain: dynamic-stock-pricing
+ * Text Domain: dynamic-stock-pricing-for-wc
  * Domain Path: /languages
  * Requires at least: 5.0
  * Tested up to: 6.4
@@ -60,9 +60,6 @@ class Dynamic_Stock_Pricing_For_WC {
 	 * Initialize hooks
 	 */
 	private function init_hooks() {
-		// Load plugin text domain for translations
-		add_action( 'init', array( $this, 'load_textdomain' ) );
-		add_action( 'init', array( $this, 'load_textdomain_late' ), 999 );
 
 		// Initialize services after plugins are loaded
 		add_action( 'plugins_loaded', array( $this, 'init_services' ) );
@@ -71,27 +68,6 @@ class Dynamic_Stock_Pricing_For_WC {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
-	/**
-	 * Load plugin text domain for translations
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'dynamic-stock-pricing',
-			false,
-			dirname( plugin_basename( __FILE__ ) ) . '/languages'
-		);
-	}
-
-	/**
-	 * Late load text domain to ensure compatibility with translation systems
-	 */
-	public function load_textdomain_late() {
-		load_plugin_textdomain(
-			'dynamic-stock-pricing',
-			false,
-			dirname( plugin_basename( __FILE__ ) ) . '/languages'
-		);
-	}
 
 	/**
 	 * Initialize services

@@ -110,7 +110,7 @@ class CustomerMessagingModule {
 
 		if ( $needs_message && $settings['customer_message_enabled'] ) {
 			$item_data[] = array(
-				'key'     => __( 'Dynamic Pricing Notice', 'dynamic-stock-pricing' ),
+				'key'     => __( 'Dynamic Pricing Notice', 'dynamic-stock-pricing-for-wc' ),
 				'value'   => esc_html( $settings['customer_message'] ),
 				'display' => '',
 			);
@@ -128,7 +128,7 @@ class CustomerMessagingModule {
 		$defaults = array(
 			'enable_plugin'            => 1,
 			'customer_message_enabled' => 1,
-			'customer_message'         => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing' ),
+			'customer_message'         => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing-for-wc' ),
 		);
 
 		$settings = get_option( 'dynamic_stock_pricing_settings', array() );

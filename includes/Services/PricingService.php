@@ -56,7 +56,7 @@ class PricingService {
 			'high_stock_threshold'       => 100,
 			'high_stock_price_decrease'  => 15,
 			'customer_message_enabled'   => 1,
-			'customer_message'           => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing' ),
+			'customer_message'           => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing-for-wc' ),
 		);
 
 		$settings = get_option( 'dynamic_stock_pricing_settings', array() );
@@ -277,7 +277,7 @@ class PricingService {
 				$cart_item_data['dsp_original_price'] = $base_price;
 				
 				// Generate unique hash to prevent merging of items with different prices
-				$cart_item_data['dsp_unique_key'] = md5( microtime() . rand() );
+				$cart_item_data['dsp_unique_key'] = md5( microtime() . wp_rand() );
 			}
 		}
 
@@ -429,15 +429,15 @@ class PricingService {
 		if ( $stock_quantity <= $low_stock_threshold ) {
 			$adjustment_percentage = $low_increase_pct;
 			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price increased by %d%% due to low stock', 'dynamic-stock-pricing' ), $adjustment_percentage );
+			$message = sprintf( __( 'Price increased by %d%% due to low stock', 'dynamic-stock-pricing-for-wc' ), $adjustment_percentage );
 		} elseif ( $stock_quantity <= $medium_stock_threshold ) {
 			$adjustment_percentage = $medium_increase_pct;
 			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price increased by %d%% due to limited stock', 'dynamic-stock-pricing' ), $adjustment_percentage );
+			$message = sprintf( __( 'Price increased by %d%% due to limited stock', 'dynamic-stock-pricing-for-wc' ), $adjustment_percentage );
 		} elseif ( $stock_quantity >= $high_stock_threshold ) {
 			$adjustment_percentage = -$high_decrease_pct;
 			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price decreased by %d%% due to high stock', 'dynamic-stock-pricing' ), abs( $adjustment_percentage ) );
+			$message = sprintf( __( 'Price decreased by %d%% due to high stock', 'dynamic-stock-pricing-for-wc' ), abs( $adjustment_percentage ) );
 		}
 
 		return array(

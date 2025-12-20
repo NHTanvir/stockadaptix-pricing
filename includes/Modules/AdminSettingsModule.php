@@ -35,10 +35,10 @@ class AdminSettingsModule {
 	public function add_admin_menu() {
 		add_submenu_page(
 			'woocommerce',
-			__( 'Dynamic Stock Pricing', 'dynamic-stock-pricing' ),
-			__( 'Stock Pricing', 'dynamic-stock-pricing' ),
+			__( 'Dynamic Stock Pricing', 'dynamic-stock-pricing-for-wc' ),
+			__( 'Stock Pricing', 'dynamic-stock-pricing-for-wc' ),
 			'manage_woocommerce',
-			'dynamic-stock-pricing',
+			'dynamic-stock-pricing-for-wc',
 			array( $this, 'settings_page' )
 		);
 	}
@@ -55,7 +55,7 @@ class AdminSettingsModule {
 
 		add_settings_section(
 			'dynamic_stock_pricing_main',
-			__( 'Pricing Configuration', 'dynamic-stock-pricing' ),
+			__( 'Pricing Configuration', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'section_callback' ),
 			'dynamic_stock_pricing'
 		);
@@ -63,26 +63,26 @@ class AdminSettingsModule {
 		// Enable/Disable plugin
 		add_settings_field(
 			'enable_plugin',
-			__( 'Enable Dynamic Pricing', 'dynamic-stock-pricing' ),
+			__( 'Enable Dynamic Pricing', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'checkbox_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'   => 'enable_plugin',
-				'label' => __( 'Check this box to enable dynamic stock-based pricing', 'dynamic-stock-pricing' ),
+				'label' => __( 'Check this box to enable dynamic stock-based pricing', 'dynamic-stock-pricing-for-wc' ),
 			)
 		);
 
 		// Low stock threshold (<= 5)
 		add_settings_field(
 			'low_stock_threshold',
-			__( 'Low Stock Threshold', 'dynamic-stock-pricing' ),
+			__( 'Low Stock Threshold', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'low_stock_threshold',
-				'label'       => __( 'Stock level considered low (default: 5)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Stock level considered low (default: 5)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '5',
 			)
@@ -91,13 +91,13 @@ class AdminSettingsModule {
 		// Low stock price increase
 		add_settings_field(
 			'low_stock_price_increase',
-			__( 'Low Stock Price Increase', 'dynamic-stock-pricing' ),
+			__( 'Low Stock Price Increase', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'low_stock_price_increase',
-				'label'       => __( 'Price increase percentage when stock is low (default: 40%)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Price increase percentage when stock is low (default: 40%)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '40',
 				'suffix'      => '%',
@@ -107,13 +107,13 @@ class AdminSettingsModule {
 		// Medium stock threshold (<= 20)
 		add_settings_field(
 			'medium_stock_threshold',
-			__( 'Medium Stock Threshold', 'dynamic-stock-pricing' ),
+			__( 'Medium Stock Threshold', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'medium_stock_threshold',
-				'label'       => __( 'Stock level considered medium (default: 20)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Stock level considered medium (default: 20)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '20',
 			)
@@ -122,13 +122,13 @@ class AdminSettingsModule {
 		// Medium stock price increase
 		add_settings_field(
 			'medium_stock_price_increase',
-			__( 'Medium Stock Price Increase', 'dynamic-stock-pricing' ),
+			__( 'Medium Stock Price Increase', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'medium_stock_price_increase',
-				'label'       => __( 'Price increase percentage when stock is medium (default: 20%)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Price increase percentage when stock is medium (default: 20%)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '20',
 				'suffix'      => '%',
@@ -138,13 +138,13 @@ class AdminSettingsModule {
 		// High stock threshold (>= 100)
 		add_settings_field(
 			'high_stock_threshold',
-			__( 'High Stock Threshold', 'dynamic-stock-pricing' ),
+			__( 'High Stock Threshold', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'high_stock_threshold',
-				'label'       => __( 'Stock level considered high (default: 100)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Stock level considered high (default: 100)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '100',
 			)
@@ -153,13 +153,13 @@ class AdminSettingsModule {
 		// High stock price decrease
 		add_settings_field(
 			'high_stock_price_decrease',
-			__( 'High Stock Price Decrease', 'dynamic-stock-pricing' ),
+			__( 'High Stock Price Decrease', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'high_stock_price_decrease',
-				'label'       => __( 'Price decrease percentage when stock is high (default: 15%)', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Price decrease percentage when stock is high (default: 15%)', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'number',
 				'placeholder' => '15',
 				'suffix'      => '%',
@@ -169,28 +169,28 @@ class AdminSettingsModule {
 		// Customer message option
 		add_settings_field(
 			'customer_message_enabled',
-			__( 'Enable Customer Message', 'dynamic-stock-pricing' ),
+			__( 'Enable Customer Message', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'checkbox_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'   => 'customer_message_enabled',
-				'label' => __( 'Display a message to customers about price adjustments', 'dynamic-stock-pricing' ),
+				'label' => __( 'Display a message to customers about price adjustments', 'dynamic-stock-pricing-for-wc' ),
 			)
 		);
 
 		// Customer message text
 		add_settings_field(
 			'customer_message',
-			__( 'Customer Message', 'dynamic-stock-pricing' ),
+			__( 'Customer Message', 'dynamic-stock-pricing-for-wc' ),
 			array( $this, 'input_field_callback' ),
 			'dynamic_stock_pricing',
 			'dynamic_stock_pricing_main',
 			array(
 				'key'         => 'customer_message',
-				'label'       => __( 'Message shown to customers when prices are adjusted (default: "High demand – price adjusted based on availability")', 'dynamic-stock-pricing' ),
+				'label'       => __( 'Message shown to customers when prices are adjusted (default: "High demand – price adjusted based on availability")', 'dynamic-stock-pricing-for-wc' ),
 				'type'        => 'text',
-				'placeholder' => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing' ),
+				'placeholder' => __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing-for-wc' ),
 			)
 		);
 	}
@@ -199,7 +199,7 @@ class AdminSettingsModule {
 	 * Section callback
 	 */
 	public function section_callback() {
-		echo '<p>' . esc_html__( 'Configure how stock levels affect product pricing.', 'dynamic-stock-pricing' ) . '</p>';
+		echo '<p>' . esc_html__( 'Configure how stock levels affect product pricing.', 'dynamic-stock-pricing-for-wc' ) . '</p>';
 	}
 
 	/**
@@ -245,7 +245,7 @@ class AdminSettingsModule {
 			esc_attr( $args['key'] ),
 			esc_attr( self::OPTIONS_KEY ),
 			esc_attr( $args['key'] ),
-			$checked
+			esc_html( $checked )
 		);
 
 		if ( ! empty( $args['label'] ) ) {
@@ -288,7 +288,7 @@ class AdminSettingsModule {
 
 		// Sanitize customer message
 		$sanitized_input['customer_message_enabled'] = ! empty( $input['customer_message_enabled'] ) ? 1 : 0;
-		$sanitized_input['customer_message']         = ! empty( $input['customer_message'] ) ? sanitize_text_field( $input['customer_message'] ) : __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing' );
+		$sanitized_input['customer_message']         = ! empty( $input['customer_message'] ) ? sanitize_text_field( $input['customer_message'] ) : __( 'High demand – price adjusted based on availability', 'dynamic-stock-pricing-for-wc' );
 
 		return $sanitized_input;
 	}
@@ -299,7 +299,7 @@ class AdminSettingsModule {
 	public function settings_page() {
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Dynamic Stock Pricing for WooCommerce', 'dynamic-stock-pricing' ); ?></h1>
+			<h1><?php esc_html_e( 'Dynamic Stock Pricing for WooCommerce', 'dynamic-stock-pricing-for-wc' ); ?></h1>
 			
 			<form method="post" action="options.php">
 				<?php
@@ -310,12 +310,12 @@ class AdminSettingsModule {
 			</form>
 			
 			<div class="card" style="margin-top: 20px;">
-				<h2><?php esc_html_e( 'How It Works', 'dynamic-stock-pricing' ); ?></h2>
+				<h2><?php esc_html_e( 'How It Works', 'dynamic-stock-pricing-for-wc' ); ?></h2>
 				<ul>
-					<li><?php esc_html_e( 'If stock ≤ Low Stock Threshold: increase price by Low Stock Price Increase %', 'dynamic-stock-pricing' ); ?></li>
-					<li><?php esc_html_e( 'If stock ≤ Medium Stock Threshold: increase price by Medium Stock Price Increase %', 'dynamic-stock-pricing' ); ?></li>
-					<li><?php esc_html_e( 'If stock ≥ High Stock Threshold: decrease price by High Stock Price Decrease %', 'dynamic-stock-pricing' ); ?></li>
-					<li><?php esc_html_e( 'Otherwise: use normal price', 'dynamic-stock-pricing' ); ?></li>
+					<li><?php esc_html_e( 'If stock ≤ Low Stock Threshold: increase price by Low Stock Price Increase %', 'dynamic-stock-pricing-for-wc' ); ?></li>
+					<li><?php esc_html_e( 'If stock ≤ Medium Stock Threshold: increase price by Medium Stock Price Increase %', 'dynamic-stock-pricing-for-wc' ); ?></li>
+					<li><?php esc_html_e( 'If stock ≥ High Stock Threshold: decrease price by High Stock Price Decrease %', 'dynamic-stock-pricing-for-wc' ); ?></li>
+					<li><?php esc_html_e( 'Otherwise: use normal price', 'dynamic-stock-pricing-for-wc' ); ?></li>
 				</ul>
 			</div>
 		</div>

@@ -3,7 +3,7 @@
 **Contributors:** naymulhasantanvir  
 **Tags:** woocommerce, dynamic pricing, stock management, inventory, pricing  
 **Requires at least:** 5.0  
-**Tested up to:** 6.4  
+**Tested up to:** 6.9  
 **WC requires at least:** 5.0  
 **WC tested up to:** 8.0  
 **Stable tag:** 1.0.0  

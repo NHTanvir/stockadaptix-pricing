@@ -50,7 +50,7 @@ class CompatibilityService {
 	 */
 	public function outdated_wc_notice() {
 		/* translators: %s: plugin name */
-		echo '<div class="notice notice-warning"><p>' . esc_html__( 'Dynamic Stock Pricing for WooCommerce: Requires WooCommerce version 5.0 or higher.', 'dynamic-stock-pricing' ) . '</p></div>';
+		echo '<div class="notice notice-warning"><p>' . esc_html__( 'Dynamic Stock Pricing for WooCommerce: Requires WooCommerce version 5.0 or higher.', 'dynamic-stock-pricing-for-wc' ) . '</p></div>';
 	}
 
 	/**
