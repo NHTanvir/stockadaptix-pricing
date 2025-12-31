@@ -1,13 +1,13 @@
 # Dynamic Stock Pricing for WooCommerce
 
-**Contributors:** tanvir26  
-**Tags:** woocommerce, dynamic pricing, stock management, inventory, pricing  
-**Requires at least:** 5.0  
-**Tested up to:** 6.9  
-**WC requires at least:** 5.0  
-**WC tested up to:** 8.0  
-**Stable tag:** 1.0.0  
-**License:** GPLv2 or later  
+**Contributors:** tanvir26
+**Tags:** woocommerce, dynamic pricing, stock management, inventory, pricing
+**Requires at least:** 5.0
+**Tested up to:** 6.9
+**WC requires at least:** 5.0
+**WC tested up to:** 8.0
+**Stable tag:** 1.0.0
+**License:** GPLv2 or later
 **License URI:** http://www.gnu.org/licenses/gpl-2.0.html
 
 Dynamically adjust product prices based on current stock quantity to reflect supply and demand in real-time.

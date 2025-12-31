@@ -260,6 +260,21 @@ class AdminSettingsModule {
 	 * @return array
 	 */
 	public function sanitize_settings( $input ) {
+		// Verify nonce
+		if ( ! isset( $_POST['dynamic_stock_pricing_settings_nonce'] ) ||
+			 ! wp_verify_nonce( $_POST['dynamic_stock_pricing_settings_nonce'], 'dynamic_stock_pricing_settings_action' ) ) {
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				return array(); // Return empty array if user doesn't have proper capabilities
+			}
+			add_settings_error(
+				self::OPTIONS_KEY,
+				'nonce_verification_failed',
+				__( 'Security verification failed. Please try saving your settings again.', 'dynamic-stock-pricing-for-wc' ),
+				'error'
+			);
+			return get_option( self::OPTIONS_KEY, array() ); // Return current settings to prevent data loss
+		}
+
 		$sanitized_input = array();
 
 		// Enable plugin
@@ -300,15 +315,16 @@ class AdminSettingsModule {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Dynamic Stock Pricing for WooCommerce', 'dynamic-stock-pricing-for-wc' ); ?></h1>
-			
+
 			<form method="post" action="options.php">
 				<?php
 					settings_fields( self::OPTIONS_KEY );
+					wp_nonce_field( 'dynamic_stock_pricing_settings_action', 'dynamic_stock_pricing_settings_nonce' );
 					do_settings_sections( 'dynamic_stock_pricing' );
 					submit_button();
 				?>
 			</form>
-			
+
 			<div class="card" style="margin-top: 20px;">
 				<h2><?php esc_html_e( 'How It Works', 'dynamic-stock-pricing-for-wc' ); ?></h2>
 				<ul>

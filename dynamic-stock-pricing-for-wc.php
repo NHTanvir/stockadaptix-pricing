@@ -8,9 +8,9 @@
  * Text Domain: dynamic-stock-pricing-for-wc
  * Domain Path: /languages
  * Requires at least: 5.0
- * Tested up to: 6.4
+ * Tested up to: 6.9
  * WC requires at least: 5.0
- * WC tested up to: 8.0
+ * WC tested up to: 10.4.3
  * Requires Plugins: woocommerce
  */
 
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'DYNAMIC_STOCK_PRICING_VERSION', '1.0.0' );
+define( 'DYNAMIC_STOCK_PRICING_VERSION', '1.0.1' );
 define( 'DYNAMIC_STOCK_PRICING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'DYNAMIC_STOCK_PRICING_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -73,23 +73,47 @@ class Dynamic_Stock_Pricing_For_WC {
 	 * Initialize services
 	 */
 	public function init_services() {
+		// Check if WooCommerce is active before initializing services
+		if ( ! $this->is_woocommerce_active() ) {
+			add_action( 'admin_notices', array( $this, 'woocommerce_required_notice' ) );
+			return;
+		}
+
 		// Include service classes
 		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Services/PricingService.php';
 		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Services/CompatibilityService.php';
 		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Modules/AdminSettingsModule.php';
 		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Modules/CustomerMessagingModule.php';
-		
+
 		// Initialize the pricing service
 		new \DynamicStockPricing\Services\PricingService();
-		
+
 		// Initialize the compatibility service
 		new \DynamicStockPricing\Services\CompatibilityService();
 
 		// Initialize admin settings module
 		new \DynamicStockPricing\Modules\AdminSettingsModule();
-		
+
 		// Initialize customer messaging module
 		new \DynamicStockPricing\Modules\CustomerMessagingModule();
+	}
+
+	/**
+	 * Check if WooCommerce is active
+	 *
+	 * @return bool
+	 */
+	private function is_woocommerce_active() {
+		return class_exists( 'WooCommerce' );
+	}
+
+	/**
+	 * Display notice if WooCommerce is not active
+	 */
+	public function woocommerce_required_notice() {
+		/* translators: %s: Plugin name */
+		$message = sprintf( __( '%s requires WooCommerce to be installed and active.', 'dynamic-stock-pricing-for-wc' ), __( 'Dynamic Stock Pricing for WooCommerce', 'dynamic-stock-pricing-for-wc' ) );
+		printf( '<div class="notice notice-error"><p>%s</p></div>', wp_kses_post( $message ) );
 	}
 
 	/**
