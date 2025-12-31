@@ -23,6 +23,7 @@ The Dynamic Stock Pricing for WooCommerce plugin allows you to automatically adj
 * Compatible with cart and checkout processes
 * Optional customer messaging about price adjustments
 * Translation-ready
+* HPOS (High-Performance Order Storage) compatible
 
 ### Pricing Rules (Configurable):
 * If stock ≤ 5 → increase price by 40%

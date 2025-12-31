@@ -18,6 +18,17 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+use Automattic\WooCommerce\Utilities\FeaturesUtil;
+
+add_action( 'before_woocommerce_init', function() {
+    if ( class_exists( FeaturesUtil::class ) ) {
+        FeaturesUtil::declare_compatibility(
+            'custom_order_tables',
+            __FILE__,
+            true
+        );
+    }
+} );
 
 // Define plugin constants
 define( 'DYNAMIC_STOCK_PRICING_VERSION', '1.0.1' );
