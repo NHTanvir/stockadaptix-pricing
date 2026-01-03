@@ -1,11 +1,11 @@
 <?php
 /**
- * Plugin Name: Dynamic Stock Pricing for WooCommerce
+ * Plugin Name: StockMatrix Pricing for WooCommerce
  * Description: Dynamically adjust product prices based on current stock quantity to reflect supply and demand in real-time.
  * Version: 1.0.0
  * Author: Naymul Hasan Tanvir
  * License: GPL v2 or later
- * Text Domain: dynamic-stock-pricing-for-wc
+ * Text Domain: stockmatrix-pricing-for-wc
  * Domain Path: /languages
  * Requires at least: 5.0
  * Tested up to: 6.9
@@ -31,15 +31,15 @@ add_action( 'before_woocommerce_init', function() {
 } );
 
 // Define plugin constants
-define( 'DYNAMIC_STOCK_PRICING_VERSION', '1.0.1' );
-define( 'DYNAMIC_STOCK_PRICING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'DYNAMIC_STOCK_PRICING_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+define( 'STOCKMATRIX_PRICING_VERSION', '1.0.1' );
+define( 'STOCKMATRIX_PRICING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'STOCKMATRIX_PRICING_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 
 
 /**
  * Main plugin class
  */
-class Dynamic_Stock_Pricing_For_WC {
+class StockMatrix_Pricing_For_WC {
 
 	/**
 	 * Plugin instance
@@ -91,22 +91,22 @@ class Dynamic_Stock_Pricing_For_WC {
 		}
 
 		// Include service classes
-		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Services/PricingService.php';
-		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Services/CompatibilityService.php';
-		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Modules/AdminSettingsModule.php';
-		require_once DYNAMIC_STOCK_PRICING_PLUGIN_PATH . 'includes/Modules/CustomerMessagingModule.php';
+		require_once STOCKMATRIX_PRICING_PLUGIN_PATH . 'includes/Services/PricingService.php';
+		require_once STOCKMATRIX_PRICING_PLUGIN_PATH . 'includes/Services/CompatibilityService.php';
+		require_once STOCKMATRIX_PRICING_PLUGIN_PATH . 'includes/Modules/AdminSettingsModule.php';
+		require_once STOCKMATRIX_PRICING_PLUGIN_PATH . 'includes/Modules/CustomerMessagingModule.php';
 
 		// Initialize the pricing service
-		new \DynamicStockPricing\Services\PricingService();
+		new \StockMatrixPricing\Services\PricingService();
 
 		// Initialize the compatibility service
-		new \DynamicStockPricing\Services\CompatibilityService();
+		new \StockMatrixPricing\Services\CompatibilityService();
 
 		// Initialize admin settings module
-		new \DynamicStockPricing\Modules\AdminSettingsModule();
+		new \StockMatrixPricing\Modules\AdminSettingsModule();
 
 		// Initialize customer messaging module
-		new \DynamicStockPricing\Modules\CustomerMessagingModule();
+		new \StockMatrixPricing\Modules\CustomerMessagingModule();
 	}
 
 	/**
@@ -123,7 +123,7 @@ class Dynamic_Stock_Pricing_For_WC {
 	 */
 	public function woocommerce_required_notice() {
 		/* translators: %s: Plugin name */
-		$message = sprintf( __( '%s requires WooCommerce to be installed and active.', 'dynamic-stock-pricing-for-wc' ), __( 'Dynamic Stock Pricing for WooCommerce', 'dynamic-stock-pricing-for-wc' ) );
+		$message = sprintf( __( '%s requires WooCommerce to be installed and active.', 'stockmatrix-pricing-for-wc' ), __( 'StockMatrix Pricing for WooCommerce', 'stockmatrix-pricing-for-wc' ) );
 		printf( '<div class="notice notice-error"><p>%s</p></div>', wp_kses_post( $message ) );
 	}
 
@@ -132,10 +132,10 @@ class Dynamic_Stock_Pricing_For_WC {
 	 */
 	public function enqueue_scripts() {
 		wp_enqueue_style(
-			'dynamic-stock-pricing-frontend',
-			DYNAMIC_STOCK_PRICING_PLUGIN_URL . 'assets/css/frontend.css',
+			'stockmatrix-pricing-frontend',
+			STOCKMATRIX_PRICING_PLUGIN_URL . 'assets/css/frontend.css',
 			array(),
-			DYNAMIC_STOCK_PRICING_VERSION
+			STOCKMATRIX_PRICING_VERSION
 		);
 	}
 }
@@ -145,9 +145,9 @@ class Dynamic_Stock_Pricing_For_WC {
  *
  * @return object
  */
-function dynamic_stock_pricing_init() {
-	return Dynamic_Stock_Pricing_For_WC::get_instance();
+function stockmatrix_pricing_init() {
+	return StockMatrix_Pricing_For_WC::get_instance();
 }
 
 // Initialize the plugin
-dynamic_stock_pricing_init();
+stockmatrix_pricing_init();

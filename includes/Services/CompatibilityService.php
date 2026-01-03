@@ -1,5 +1,5 @@
 <?php
-namespace DynamicStockPricing\Services;
+namespace StockMatrixPricing\Services;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -50,7 +50,7 @@ class CompatibilityService {
 	 */
 	public function outdated_wc_notice() {
 		/* translators: %s: plugin name */
-		$message = __( 'Dynamic Stock Pricing for WooCommerce: Requires WooCommerce version 5.0 or higher.', 'dynamic-stock-pricing-for-wc' );
+		$message = __( 'StockMatrix Pricing for WooCommerce: Requires WooCommerce version 5.0 or higher.', 'stockmatrix-pricing-for-wc' );
 		printf( '<div class="notice notice-warning"><p>%s</p></div>', esc_html( $message ) );
 	}
 
@@ -82,7 +82,7 @@ class CompatibilityService {
 	 * @return bool
 	 */
 	private function is_enabled() {
-		$settings = get_option( 'dynamic_stock_pricing_settings', array() );
+		$settings = get_option( 'stockmatrix_pricing_settings', array() );
 		return ! empty( $settings['enable_plugin'] );
 	}
 
