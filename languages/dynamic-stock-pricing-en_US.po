@@ -16,7 +16,7 @@ msgstr ""
 "X-Poedit-SearchPath-0: .\n"
 "X-Poedit-SearchPathExcluded-0: *.js\n"
 
-#: dynamic-stock-pricing-for-wc.php:8
+#: stockadaptix-pricing.php:8
 msgid "StockAdaptix Pricing for WooCommerce"
 msgstr "StockAdaptix Pricing for WooCommerce"
 
@@ -158,6 +158,6 @@ msgstr "Price increased by %d%% due to limited stock"
 msgid "Price decreased by %d%% due to high stock"
 msgstr "Price decreased by %d%% due to high stock"
 
-#: dynamic-stock-pricing-for-wc.php:29
+#: stockadaptix-pricing.php:29
 msgid "StockAdaptix Pricing for WooCommerce requires WooCommerce to be installed and active."
 msgstr "StockAdaptix Pricing for WooCommerce requires WooCommerce to be installed and active."

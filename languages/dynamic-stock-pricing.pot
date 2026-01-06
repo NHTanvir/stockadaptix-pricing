@@ -29,7 +29,7 @@ msgstr ""
 msgid "Price decreased by %d%% due to high stock"
 msgstr ""
 
-#: dynamic-stock-pricing-for-wc.php:29
+#: stockadaptix-pricing.php:29
 msgid "StockAdaptix Pricing for WooCommerce requires WooCommerce to be installed and active."
 msgstr ""
 
