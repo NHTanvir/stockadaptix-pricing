@@ -28,24 +28,26 @@
         "composer/installers": "~1.0"
     },
     "require-dev": {
-        "dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
-        "wp-coding-standards/wpcs": "^2.3",
-        "phpcompatibility/phpcompatibility-wp": "^2.1"
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "wp-coding-standards/wpcs": "^3.0",
+        "phpcompatibility/phpcompatibility-wp": "^2.1",
+        "phpunit/phpunit": "^9.6",
+        "brain/monkey": "^2.6"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "StockAdaptixPricing\\Tests\\": "tests/"
+        }
     },
     "scripts": {
-        "post-install-cmd": [
-            "\"vendor/bin/phpcs\" --config-set installed_paths vendor/wp-coding-standards/wpcs",
-            "\"vendor/bin/phpcbf\" --config-set installed_paths vendor/wp-coding-standards/wpcs"
-        ],
-        "post-update-cmd": [
-            "\"vendor/bin/phpcs\" --config-set installed_paths vendor/wp-coding-standards/wpcs",
-            "\"vendor/bin/phpcbf\" --config-set installed_paths vendor/wp-coding-standards/wpcs"
-        ],
         "phpcs": [
             "\"vendor/bin/phpcs\" --standard=WordPress --extensions=php ."
         ],
         "phpcbf": [
             "\"vendor/bin/phpcbf\" --standard=WordPress --extensions=php ."
+        ],
+        "test": [
+            "\"vendor/bin/phpunit\" --colors=always"
         ]
     },
     "config": {

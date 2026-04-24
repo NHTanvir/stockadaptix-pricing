@@ -2,7 +2,7 @@
 /**
  * Plugin Name: StockAdaptix – Inventory-Driven Dynamic Pricing for WooCommerce
  * Description: Dynamically adjust product prices based on current stock quantity to reflect supply and demand in real-time.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Naymul Hasan Tanvir
  * License: GPL v2 or later
  * Text Domain: stockadaptix-pricing
@@ -31,7 +31,7 @@ add_action( 'before_woocommerce_init', function() {
 } );
 
 // Define plugin constants
-define( 'STOCKADAPTIX_PRICING_VERSION', '1.0.1' );
+define( 'STOCKADAPTIX_PRICING_VERSION', '1.1.0' );
 define( 'STOCKADAPTIX_PRICING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'STOCKADAPTIX_PRICING_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -93,19 +93,14 @@ class StockAdaptix_Pricing_For_WC {
 		// Include service classes
 		require_once STOCKADAPTIX_PRICING_PLUGIN_PATH . 'includes/Services/PricingService.php';
 		require_once STOCKADAPTIX_PRICING_PLUGIN_PATH . 'includes/Services/CompatibilityService.php';
+		require_once STOCKADAPTIX_PRICING_PLUGIN_PATH . 'includes/Services/RestApiService.php';
 		require_once STOCKADAPTIX_PRICING_PLUGIN_PATH . 'includes/Modules/AdminSettingsModule.php';
 		require_once STOCKADAPTIX_PRICING_PLUGIN_PATH . 'includes/Modules/CustomerMessagingModule.php';
 
-		// Initialize the pricing service
 		new \StockAdaptixPricing\Services\PricingService();
-
-		// Initialize the compatibility service
 		new \StockAdaptixPricing\Services\CompatibilityService();
-
-		// Initialize admin settings module
+		new \StockAdaptixPricing\Services\RestApiService();
 		new \StockAdaptixPricing\Modules\AdminSettingsModule();
-
-		// Initialize customer messaging module
 		new \StockAdaptixPricing\Modules\CustomerMessagingModule();
 	}
 

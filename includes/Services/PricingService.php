@@ -13,6 +13,8 @@ use WC_Product;
  */
 class PricingService {
 
+	const OPTION_KEY = 'stockadaptix_pricing_settings';
+
 	/**
 	 * Constructor
 	 */
@@ -24,61 +26,193 @@ class PricingService {
 	 * Initialize hooks
 	 */
 	private function init_hooks() {
-		// Check if HPOS is enabled
-		$hpos_enabled = $this->is_hpos_enabled();
-
 		// Apply pricing adjustment via a method that doesn't cause sale display
 		// Only apply to frontend to avoid issues with HPOS and order processing
 		if ( ! is_admin() && ! defined( 'DOING_AJAX' ) && ! $this->is_order_processing_context() ) {
 			add_filter( 'woocommerce_product_get_price', array( $this, 'adjust_price' ), 10, 2 );
 			add_filter( 'woocommerce_product_get_regular_price', array( $this, 'adjust_price' ), 10, 2 );
 			add_filter( 'woocommerce_product_get_sale_price', array( $this, 'adjust_price' ), 10, 2 );
+
+			// Variable product variation prices (used for individual variation pricing).
+			add_filter( 'woocommerce_product_variation_get_price', array( $this, 'adjust_price' ), 10, 2 );
+			add_filter( 'woocommerce_product_variation_get_regular_price', array( $this, 'adjust_price' ), 10, 2 );
+			add_filter( 'woocommerce_product_variation_get_sale_price', array( $this, 'adjust_price' ), 10, 2 );
+
+			// Variable product cached min/max prices used in archive listings.
+			add_filter( 'woocommerce_variation_prices_price', array( $this, 'adjust_variation_cached_price' ), 10, 3 );
+			add_filter( 'woocommerce_variation_prices_regular_price', array( $this, 'adjust_variation_cached_price' ), 10, 3 );
+			add_filter( 'woocommerce_variation_prices_sale_price', array( $this, 'adjust_variation_cached_price' ), 10, 3 );
+
+			// Bust the variation prices cache so dynamic prices are not stuck.
+			add_filter( 'woocommerce_get_variation_prices_hash', array( $this, 'variation_prices_hash' ), 10, 3 );
 		}
 
-		// Use a targeted approach for the display to avoid sale appearance
+		// Targeted display filters to avoid sale appearance.
 		add_filter( 'woocommerce_get_price_html', array( $this, 'adjust_price_html' ), 20, 2 );
 		add_filter( 'woocommerce_cart_product_price', array( $this, 'adjust_cart_product_price_html' ), 20, 2 );
 		add_filter( 'woocommerce_cart_item_price', array( $this, 'adjust_cart_item_price_html' ), 20, 3 );
 
-		// Handle cart pricing
+		// Cart pricing.
 		add_filter( 'woocommerce_add_cart_item_data', array( $this, 'add_cart_item_data' ), 10, 3 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'get_cart_item_from_session' ), 20, 2 );
 		add_action( 'woocommerce_calculate_totals', array( $this, 'calculate_totals' ), 20 );
 
-		// For checkout/cart calculations - only on frontend
+		// Cart/checkout totals - frontend only.
 		if ( ! is_admin() && ! defined( 'DOING_AJAX' ) && ! $this->is_order_processing_context() ) {
 			add_action( 'woocommerce_before_calculate_totals', array( $this, 'before_calculate_totals' ), 20 );
 		}
 
-		// Compatibility with order processing and HPOS
+		// HPOS / order processing compatibility.
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_meta' ), 10, 4 );
 		add_filter( 'woocommerce_get_order_item_totals', array( $this, 'adjust_order_item_totals' ), 10, 3 );
 
-		// Email improvements compatibility
+		// Email compatibility.
 		add_action( 'woocommerce_email', array( $this, 'setup_email_compatibility' ), 5 );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'setup_email_compatibility' ), 5 );
 	}
 
 	/**
-	 * Get plugin settings
+	 * Default settings shape
 	 *
 	 * @return array
 	 */
-	private function get_settings() {
-		$defaults = array(
-			'enable_plugin'              => 1,
-			'low_stock_threshold'        => 5,
-			'low_stock_price_increase'   => 40,
-			'medium_stock_threshold'     => 20,
-			'medium_stock_price_increase' => 20,
-			'high_stock_threshold'       => 100,
-			'high_stock_price_decrease'  => 15,
-			'customer_message_enabled'   => 1,
-			'customer_message'           => __( 'High demand – price adjusted based on availability', 'stockadaptix-pricing' ),
+	public static function default_settings() {
+		return array(
+			'enable_plugin'            => 1,
+			'rules'                    => array(
+				array(
+					'comparator' => 'lte',
+					'threshold'  => 5,
+					'direction'  => 'increase',
+					'percent'    => 40,
+				),
+				array(
+					'comparator' => 'lte',
+					'threshold'  => 20,
+					'direction'  => 'increase',
+					'percent'    => 20,
+				),
+				array(
+					'comparator' => 'gte',
+					'threshold'  => 100,
+					'direction'  => 'decrease',
+					'percent'    => 15,
+				),
+			),
+			'price_floor'              => 0,
+			'price_ceiling'            => 0,
+			'rounding_mode'            => 'none',
+			'include_variations'       => 1,
+			'customer_message_enabled' => 1,
+			'customer_message'         => __( 'High demand – price adjusted based on availability', 'stockadaptix-pricing' ),
 		);
+	}
 
-		$settings = get_option( 'stockadaptix_pricing_settings', array() );
-		return wp_parse_args( $settings, $defaults );
+	/**
+	 * Get plugin settings, migrating from legacy schema if needed
+	 *
+	 * @return array
+	 */
+	public static function get_settings() {
+		$saved    = get_option( self::OPTION_KEY, array() );
+		$settings = wp_parse_args( $saved, self::default_settings() );
+
+		// Migrate legacy schema (low/medium/high fields) into rules array.
+		if ( empty( $saved['rules'] ) && self::has_legacy_fields( $saved ) ) {
+			$settings['rules'] = self::build_rules_from_legacy( $saved );
+		}
+
+		// Ensure rules is always an array of normalized rule objects.
+		$settings['rules'] = self::normalize_rules( $settings['rules'] );
+
+		return $settings;
+	}
+
+	/**
+	 * Whether the saved option has any legacy field
+	 *
+	 * @param array $saved Saved option.
+	 * @return bool
+	 */
+	private static function has_legacy_fields( $saved ) {
+		$legacy_keys = array(
+			'low_stock_threshold',
+			'low_stock_price_increase',
+			'medium_stock_threshold',
+			'medium_stock_price_increase',
+			'high_stock_threshold',
+			'high_stock_price_decrease',
+		);
+		foreach ( $legacy_keys as $key ) {
+			if ( isset( $saved[ $key ] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Translate the legacy three-tier schema into the new rules array
+	 *
+	 * @param array $saved Saved option.
+	 * @return array
+	 */
+	private static function build_rules_from_legacy( $saved ) {
+		$rules = array();
+		if ( isset( $saved['low_stock_threshold'] ) || isset( $saved['low_stock_price_increase'] ) ) {
+			$rules[] = array(
+				'comparator' => 'lte',
+				'threshold'  => isset( $saved['low_stock_threshold'] ) ? intval( $saved['low_stock_threshold'] ) : 5,
+				'direction'  => 'increase',
+				'percent'    => isset( $saved['low_stock_price_increase'] ) ? floatval( $saved['low_stock_price_increase'] ) : 40,
+			);
+		}
+		if ( isset( $saved['medium_stock_threshold'] ) || isset( $saved['medium_stock_price_increase'] ) ) {
+			$rules[] = array(
+				'comparator' => 'lte',
+				'threshold'  => isset( $saved['medium_stock_threshold'] ) ? intval( $saved['medium_stock_threshold'] ) : 20,
+				'direction'  => 'increase',
+				'percent'    => isset( $saved['medium_stock_price_increase'] ) ? floatval( $saved['medium_stock_price_increase'] ) : 20,
+			);
+		}
+		if ( isset( $saved['high_stock_threshold'] ) || isset( $saved['high_stock_price_decrease'] ) ) {
+			$rules[] = array(
+				'comparator' => 'gte',
+				'threshold'  => isset( $saved['high_stock_threshold'] ) ? intval( $saved['high_stock_threshold'] ) : 100,
+				'direction'  => 'decrease',
+				'percent'    => isset( $saved['high_stock_price_decrease'] ) ? floatval( $saved['high_stock_price_decrease'] ) : 15,
+			);
+		}
+		return $rules;
+	}
+
+	/**
+	 * Normalize a rules array — coerce types, clamp values, drop invalid entries
+	 *
+	 * @param mixed $rules Raw rules input.
+	 * @return array
+	 */
+	public static function normalize_rules( $rules ) {
+		if ( ! is_array( $rules ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $rules as $rule ) {
+			if ( ! is_array( $rule ) ) {
+				continue;
+			}
+			$comparator = isset( $rule['comparator'] ) && 'gte' === $rule['comparator'] ? 'gte' : 'lte';
+			$direction  = isset( $rule['direction'] ) && 'decrease' === $rule['direction'] ? 'decrease' : 'increase';
+			$threshold  = isset( $rule['threshold'] ) ? max( 0, intval( $rule['threshold'] ) ) : 0;
+			$percent    = isset( $rule['percent'] ) ? max( 0, floatval( $rule['percent'] ) ) : 0;
+			$out[]      = array(
+				'comparator' => $comparator,
+				'threshold'  => $threshold,
+				'direction'  => $direction,
+				'percent'    => $percent,
+			);
+		}
+		return $out;
 	}
 
 	/**
@@ -87,139 +221,244 @@ class PricingService {
 	 * @return bool
 	 */
 	private function is_enabled() {
-		$settings = $this->get_settings();
+		$settings = self::get_settings();
 		return (bool) $settings['enable_plugin'];
 	}
 
 	/**
-	 * Calculate adjusted price based on stock
+	 * Calculate adjusted price based on stock and configured rules
+	 *
+	 * Pure function — no WC product lookup. Useful for tests and the preview endpoint.
+	 *
+	 * @param float    $original_price Base price.
+	 * @param int|null $stock_quantity Stock quantity, or null for unmanaged.
+	 * @param array    $settings Settings array (uses get_settings() when null).
+	 * @return float
+	 */
+	public static function compute_price( $original_price, $stock_quantity, $settings = null ) {
+		$original_price = floatval( $original_price );
+		if ( $original_price < 0 ) {
+			return 0.0;
+		}
+		if ( null === $settings ) {
+			$settings = self::get_settings();
+		}
+		if ( empty( $settings['enable_plugin'] ) ) {
+			return $original_price;
+		}
+		if ( null === $stock_quantity || $stock_quantity < 0 ) {
+			return $original_price;
+		}
+
+		$adjustment_factor = 0.0;
+		foreach ( $settings['rules'] as $rule ) {
+			$matches = ( 'lte' === $rule['comparator'] && $stock_quantity <= $rule['threshold'] )
+				|| ( 'gte' === $rule['comparator'] && $stock_quantity >= $rule['threshold'] );
+			if ( $matches ) {
+				$pct               = $rule['percent'] / 100;
+				$adjustment_factor = 'decrease' === $rule['direction'] ? -$pct : $pct;
+				break;
+			}
+		}
+
+		$adjusted = $original_price * ( 1 + $adjustment_factor );
+
+		// Floor / ceiling caps (0 means disabled).
+		$floor   = isset( $settings['price_floor'] ) ? floatval( $settings['price_floor'] ) : 0;
+		$ceiling = isset( $settings['price_ceiling'] ) ? floatval( $settings['price_ceiling'] ) : 0;
+		if ( $floor > 0 ) {
+			$adjusted = max( $adjusted, $floor );
+		}
+		if ( $ceiling > 0 ) {
+			$adjusted = min( $adjusted, $ceiling );
+		}
+
+		// Rounding.
+		$mode = isset( $settings['rounding_mode'] ) ? $settings['rounding_mode'] : 'none';
+		if ( 'charm_99' === $mode && $adjusted >= 1 ) {
+			$adjusted = round( $adjusted ) - 0.01;
+		} elseif ( 'nearest' === $mode ) {
+			$adjusted = round( $adjusted );
+		}
+
+		return max( 0, $adjusted );
+	}
+
+	/**
+	 * Calculate adjusted price for a product ID
 	 *
 	 * @param int   $product_id ID of the product.
 	 * @param float $original_price Original price of the product.
 	 * @return float
 	 */
 	public function calculate_adjusted_price( $product_id, $original_price ) {
-		if ( ! $this->is_enabled() ) {
-			return $original_price;
-		}
-
-		$product_id       = absint( $product_id );
-		$original_price   = floatval( $original_price );
-		
-		// Validate inputs
-		if ( $product_id <= 0 || $original_price < 0 ) {
-			return $original_price;
+		$product_id = absint( $product_id );
+		if ( $product_id <= 0 ) {
+			return floatval( $original_price );
 		}
 
 		$product = wc_get_product( $product_id );
-		
-		// Only apply to products with stock management enabled
-		if ( ! $product || ! $product->managing_stock() ) {
-			return $original_price;
+		if ( ! $product || ! $this->is_supported_product( $product ) ) {
+			return floatval( $original_price );
 		}
 
-		$stock_quantity = $product->get_stock_quantity();
-		
-		// If stock is not managed or not set, return original price
-		if ( null === $stock_quantity || $stock_quantity < 0 ) {
-			return $original_price;
+		$stock = $this->resolve_stock_quantity( $product );
+
+		return self::compute_price( $original_price, $stock, self::get_settings() );
+	}
+
+	/**
+	 * Whether a product is in scope for adjustment
+	 *
+	 * @param WC_Product $product Product.
+	 * @return bool
+	 */
+	private function is_supported_product( $product ) {
+		if ( ! is_object( $product ) ) {
+			return false;
 		}
+		$type     = $product->get_type();
+		$settings = self::get_settings();
 
-		$settings = $this->get_settings();
-		
-		// Get thresholds and adjustments with proper sanitization
-		$low_stock_threshold     = max( 0, intval( $settings['low_stock_threshold'] ) );
-		$low_increase_pct        = max( 0, floatval( $settings['low_stock_price_increase'] ) );
-		$medium_stock_threshold  = max( 0, intval( $settings['medium_stock_threshold'] ) );
-		$medium_increase_pct     = max( 0, floatval( $settings['medium_stock_price_increase'] ) );
-		$high_stock_threshold    = max( 0, intval( $settings['high_stock_threshold'] ) );
-		$high_decrease_pct       = max( 0, floatval( $settings['high_stock_price_decrease'] ) );
-
-		$adjustment_factor = 0; // Default: no adjustment
-
-		if ( $stock_quantity <= $low_stock_threshold ) {
-			// If stock <= low threshold, increase price by low_stock_price_increase%
-			$adjustment_factor = $low_increase_pct / 100;
-		} elseif ( $stock_quantity <= $medium_stock_threshold ) {
-			// If stock <= medium threshold, increase price by medium_stock_price_increase%
-			$adjustment_factor = $medium_increase_pct / 100;
-		} elseif ( $stock_quantity >= $high_stock_threshold ) {
-			// If stock >= high threshold, decrease price by high_stock_price_decrease%
-			$adjustment_factor = -$high_decrease_pct / 100;
+		if ( 'simple' === $type ) {
+			return $product->managing_stock();
 		}
-		// Otherwise, adjustment_factor remains 0 (no change)
+		if ( 'variation' === $type ) {
+			if ( empty( $settings['include_variations'] ) ) {
+				return false;
+			}
+			// Variations may inherit stock from the parent.
+			return $product->managing_stock() || $this->parent_manages_stock( $product );
+		}
+		return false;
+	}
 
-		// Calculate new price
-		$adjusted_price = $original_price * ( 1 + $adjustment_factor );
-		
-		// Ensure price doesn't become negative
-		return max( 0, $adjusted_price );
+	/**
+	 * Whether the variation's parent product manages stock
+	 *
+	 * @param WC_Product $variation Variation product.
+	 * @return bool
+	 */
+	private function parent_manages_stock( $variation ) {
+		$parent_id = $variation->get_parent_id();
+		if ( ! $parent_id ) {
+			return false;
+		}
+		$parent = wc_get_product( $parent_id );
+		return $parent && $parent->managing_stock();
+	}
+
+	/**
+	 * Resolve the effective stock quantity for a product (variations inherit)
+	 *
+	 * @param WC_Product $product Product.
+	 * @return int|null
+	 */
+	private function resolve_stock_quantity( $product ) {
+		$stock = $product->get_stock_quantity();
+		if ( null === $stock && 'variation' === $product->get_type() ) {
+			$parent = wc_get_product( $product->get_parent_id() );
+			if ( $parent ) {
+				$stock = $parent->get_stock_quantity();
+			}
+		}
+		return $stock;
+	}
+
+	/**
+	 * Read the original (unadjusted) base price from post meta
+	 *
+	 * @param WC_Product $product Product.
+	 * @param float      $fallback Fallback when meta is missing.
+	 * @return float
+	 */
+	private function get_base_price( $product, $fallback ) {
+		$id            = $product->get_id();
+		$regular_price = floatval( get_post_meta( $id, '_regular_price', true ) );
+		if ( $regular_price > 0 ) {
+			return $regular_price;
+		}
+		return floatval( $fallback );
 	}
 
 	/**
 	 * Adjust product price based on stock
 	 *
-	 * @param float     $price Current price.
+	 * @param float      $price Current price.
 	 * @param WC_Product $product Product object.
 	 * @return float
 	 */
 	public function adjust_price( $price, $product ) {
-		// Only apply adjustments if plugin is enabled and product exists
 		if ( ! $this->is_enabled() || ! $product instanceof WC_Product ) {
 			return $price;
 		}
-
-		// Skip adjustment during admin operations, AJAX calls, and order processing to maintain HPOS compatibility
-		if ( is_admin() || defined( 'DOING_AJAX' ) || doing_action( 'woocommerce_new_order' ) || doing_action( 'woocommerce_update_order' ) || doing_action( 'woocommerce_save_order' ) ) {
+		if ( $this->in_safe_context() ) {
+			return $price;
+		}
+		if ( ! $this->is_supported_product( $product ) ) {
 			return $price;
 		}
 
-		// Only apply to simple products with stock management enabled
-		if ( 'simple' !== $product->get_type() || ! $product->managing_stock() ) {
+		$base  = $this->get_base_price( $product, $price );
+		$stock = $this->resolve_stock_quantity( $product );
+
+		return self::compute_price( $base, $stock, self::get_settings() );
+	}
+
+	/**
+	 * Adjust the cached variation price array entries
+	 *
+	 * @param string|float $price Price.
+	 * @param object       $variation Variation product.
+	 * @param object       $product Parent product.
+	 * @return float
+	 */
+	public function adjust_variation_cached_price( $price, $variation, $product ) {
+		if ( ! $this->is_enabled() || $this->in_safe_context() ) {
 			return $price;
 		}
+		if ( ! $variation instanceof WC_Product || ! $this->is_supported_product( $variation ) ) {
+			return $price;
+		}
+		$base  = $this->get_base_price( $variation, $price );
+		$stock = $this->resolve_stock_quantity( $variation );
+		return self::compute_price( $base, $stock, self::get_settings() );
+	}
 
-		$product_id = $product->get_id();
-		// Get the original price directly from post meta to avoid compounding
-		$original_regular_price = floatval( get_post_meta( $product_id, '_regular_price', true ) );
-
-		// If for some reason the original price isn't available, use the passed price
-		$base_price = $original_regular_price > 0 ? $original_regular_price : floatval( $price );
-
-		$adjusted_price = $this->calculate_adjusted_price( $product_id, $base_price );
-
-		// Return adjusted price without creating sale appearance
-		return $adjusted_price;
+	/**
+	 * Bust variation prices cache when our settings change
+	 *
+	 * @param array  $hash Existing hash parts.
+	 * @param object $product Product.
+	 * @param bool   $for_display Display context.
+	 * @return array
+	 */
+	public function variation_prices_hash( $hash, $product, $for_display ) {
+		$settings        = self::get_settings();
+		$hash['stockadaptix'] = md5( wp_json_encode( $settings ) );
+		return $hash;
 	}
 
 	/**
 	 * Adjust price HTML display to show only the adjusted price without sale indicators
 	 *
-	 * @param string    $price_html Original price HTML.
+	 * @param string     $price_html Original price HTML.
 	 * @param WC_Product $product Product object.
 	 * @return string
 	 */
 	public function adjust_price_html( $price_html, $product ) {
-		// Only apply adjustments if plugin is enabled and product exists
-		if ( ! $this->is_enabled() || ! is_object( $product ) || ! $product->is_type( 'simple' ) || ! $product->managing_stock() ) {
+		if ( ! $this->is_enabled() || ! is_object( $product ) || $this->in_safe_context() ) {
+			return $price_html;
+		}
+		if ( ! $this->is_supported_product( $product ) ) {
 			return $price_html;
 		}
 
-		// Skip adjustment during admin operations, AJAX calls, and order processing to maintain HPOS compatibility
-		if ( is_admin() || defined( 'DOING_AJAX' ) || doing_action( 'woocommerce_new_order' ) || doing_action( 'woocommerce_update_order' ) || doing_action( 'woocommerce_save_order' ) ) {
-			return $price_html;
-		}
+		$base     = $this->get_base_price( $product, $product->get_price() );
+		$stock    = $this->resolve_stock_quantity( $product );
+		$adjusted = self::compute_price( $base, $stock, self::get_settings() );
 
-		$product_id = $product->get_id();
-		$original_regular_price = floatval( get_post_meta( $product_id, '_regular_price', true ) );
-		$base_price = $original_regular_price > 0 ? $original_regular_price : floatval( $product->get_price() );
-		$adjusted_price = $this->calculate_adjusted_price( $product_id, $base_price );
-
-		// Format the adjusted price using WooCommerce's price formatting
-		$formatted_price = wc_price( $adjusted_price );
-
-		// Return the adjusted price without the original price strikethrough
-		return '<span class="woocommerce-Price-amount amount">' . $formatted_price . '</span>';
+		return '<span class="woocommerce-Price-amount amount">' . wc_price( $adjusted ) . '</span>';
 	}
 
 	/**
@@ -230,7 +469,6 @@ class PricingService {
 	 * @return string
 	 */
 	public function adjust_cart_product_price_html( $price_html, $cart_item ) {
-		// Check if $cart_item is an array (expected) or a product object (WooCommerce quirk)
 		if ( is_object( $cart_item ) && $cart_item instanceof WC_Product ) {
 			$product = $cart_item;
 		} elseif ( is_array( $cart_item ) && isset( $cart_item['data'] ) ) {
@@ -238,19 +476,16 @@ class PricingService {
 		} else {
 			return $price_html;
 		}
-		
-		// Only apply adjustments if plugin is enabled and product exists
-		if ( ! $this->is_enabled() || ! is_object( $product ) || ! $product->is_type( 'simple' ) || ! $product->managing_stock() ) {
+
+		if ( ! $this->is_enabled() || ! is_object( $product ) || ! $this->is_supported_product( $product ) ) {
 			return $price_html;
 		}
 
-		$product_id = $product->get_id();
-		$original_regular_price = floatval( get_post_meta( $product_id, '_regular_price', true ) );
-		$base_price = $original_regular_price > 0 ? $original_regular_price : floatval( $product->get_price() );
-		$adjusted_price = $this->calculate_adjusted_price( $product_id, $base_price );
+		$base     = $this->get_base_price( $product, $product->get_price() );
+		$stock    = $this->resolve_stock_quantity( $product );
+		$adjusted = self::compute_price( $base, $stock, self::get_settings() );
 
-		// Format the adjusted price using WooCommerce's price formatting
-		return wc_price( $adjusted_price );
+		return wc_price( $adjusted );
 	}
 
 	/**
@@ -262,20 +497,16 @@ class PricingService {
 	 * @return string
 	 */
 	public function adjust_cart_item_price_html( $product_price, $cart_item, $cart_item_key ) {
-		$product = $cart_item['data'];
-		
-		// Only apply adjustments if plugin is enabled and product exists
-		if ( ! $this->is_enabled() || ! is_object( $product ) || ! $product->is_type( 'simple' ) || ! $product->managing_stock() ) {
+		$product = isset( $cart_item['data'] ) ? $cart_item['data'] : null;
+		if ( ! $this->is_enabled() || ! is_object( $product ) || ! $this->is_supported_product( $product ) ) {
 			return $product_price;
 		}
 
-		$product_id = $product->get_id();
-		$original_regular_price = floatval( get_post_meta( $product_id, '_regular_price', true ) );
-		$base_price = $original_regular_price > 0 ? $original_regular_price : floatval( $product->get_price() );
-		$adjusted_price = $this->calculate_adjusted_price( $product_id, $base_price );
+		$base     = $this->get_base_price( $product, $product->get_price() );
+		$stock    = $this->resolve_stock_quantity( $product );
+		$adjusted = self::compute_price( $base, $stock, self::get_settings() );
 
-		// Format the adjusted price using WooCommerce's price formatting
-		return wc_price( $adjusted_price );
+		return wc_price( $adjusted );
 	}
 
 	/**
@@ -293,25 +524,22 @@ class PricingService {
 
 		$product_id   = absint( $product_id );
 		$variation_id = absint( $variation_id );
-
 		if ( $product_id <= 0 ) {
 			return $cart_item_data;
 		}
 
 		$the_product_id = $variation_id > 0 ? $variation_id : $product_id;
-		$product = wc_get_product( $the_product_id );
+		$product        = wc_get_product( $the_product_id );
 
-		if ( $product && $product->managing_stock() ) {
-			$original_regular_price = floatval( get_post_meta( $the_product_id, '_regular_price', true ) );
-			// Use original price to avoid compounding
-			$base_price     = $original_regular_price > 0 ? $original_regular_price : floatval( $product->get_price() );
-			$adjusted_price = $this->calculate_adjusted_price( $the_product_id, $base_price );
+		if ( $product && $this->is_supported_product( $product ) ) {
+			$base     = $this->get_base_price( $product, $product->get_price() );
+			$stock    = $this->resolve_stock_quantity( $product );
+			$adjusted = self::compute_price( $base, $stock, self::get_settings() );
 
-			if ( $adjusted_price !== $base_price ) {
-				$cart_item_data['dsp_adjusted_price'] = $adjusted_price;
-				$cart_item_data['dsp_original_price'] = $base_price;
-
-				// Generate unique hash to prevent merging of items with different prices
+			if ( $adjusted !== $base ) {
+				$cart_item_data['dsp_adjusted_price'] = $adjusted;
+				$cart_item_data['dsp_original_price'] = $base;
+				// Unique hash to prevent merging of items with different prices.
 				$cart_item_data['dsp_unique_key'] = md5( microtime() . wp_rand() );
 			}
 		}
@@ -330,8 +558,6 @@ class PricingService {
 		if ( isset( $values['dsp_adjusted_price'] ) ) {
 			$adjusted_price = floatval( $values['dsp_adjusted_price'] );
 			$original_price = isset( $values['dsp_original_price'] ) ? floatval( $values['dsp_original_price'] ) : 0;
-			
-			// Validate the prices before applying
 			if ( $adjusted_price >= 0 ) {
 				$cart_item['data']->set_price( $adjusted_price );
 				$cart_item['dsp_adjusted_price'] = $adjusted_price;
@@ -347,8 +573,7 @@ class PricingService {
 	 * @param object $cart Cart object.
 	 */
 	public function calculate_totals( $cart ) {
-		// This is called after cart calculation, the prices are already adjusted through the product objects
-		// This method can be extended if additional adjustment calculations are needed
+		// Prices are already adjusted via the product objects; nothing to do here.
 	}
 
 	/**
@@ -357,146 +582,79 @@ class PricingService {
 	 * @param object $cart Cart object.
 	 */
 	public function before_calculate_totals( $cart ) {
-		if ( ! $this->is_enabled() || is_admin() || defined( 'DOING_AJAX' ) || doing_action( 'woocommerce_new_order' ) || doing_action( 'woocommerce_update_order' ) || doing_action( 'woocommerce_save_order' ) ) {
+		if ( ! $this->is_enabled() || $this->in_safe_context() ) {
 			return;
 		}
 
 		foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
-			$product    = $cart_item['data'];
-			$product_id = $product->get_id();
+			$product = $cart_item['data'];
+			if ( ! $this->is_supported_product( $product ) ) {
+				continue;
+			}
 
-			if ( 'simple' === $product->get_type() && $product->managing_stock() ) {
-				$original_regular_price = floatval( get_post_meta( $product_id, '_regular_price', true ) );
-				$adjusted_price         = $this->calculate_adjusted_price( $product_id, $original_regular_price );
+			$base     = $this->get_base_price( $product, $product->get_price() );
+			$stock    = $this->resolve_stock_quantity( $product );
+			$adjusted = self::compute_price( $base, $stock, self::get_settings() );
 
-				if ( $adjusted_price !== $original_regular_price && $original_regular_price > 0 ) {
-					// Store original price in cart item for reference during order creation
-					$product->set_price( $adjusted_price );
-					$product->set_regular_price( $adjusted_price );
-
-					// Store adjustment info in cart for later reference
-					if ( ! isset( $cart_item['dsp_adjusted_price'] ) ) {
-						$cart_item['dsp_adjusted_price'] = $adjusted_price;
-						$cart_item['dsp_original_price'] = $original_regular_price;
-					}
-				}
+			if ( $adjusted !== $base && $base > 0 ) {
+				$product->set_price( $adjusted );
+				$product->set_regular_price( $adjusted );
 			}
 		}
 	}
 
 	/**
-	 * Adjust structured data (schema markup) for price
-	 *
-	 * @param array     $markup Structured data markup.
-	 * @param WC_Product $product Product object.
-	 * @return array
-	 */
-	public function structured_data_price( $markup, $product ) {
-		if ( ! $this->is_enabled() || ! is_object( $product ) ) {
-			return $markup;
-		}
-
-		$product_id = absint( $product->get_id() );
-		
-		if ( $product_id <= 0 ) {
-			return $markup;
-		}
-
-		$regular_price = $this->calculate_adjusted_price( $product_id, floatval( $product->get_regular_price() ) );
-		$sale_price    = $product->get_sale_price();
-		
-		if ( $sale_price ) {
-			$sale_price = $this->calculate_adjusted_price( $product_id, floatval( $sale_price ) );
-		}
-		
-		// Update the structured data with adjusted prices
-		if ( isset( $markup['price'] ) ) {
-			$markup['price'] = wc_format_decimal( max( 0, $regular_price ), wc_get_price_decimals() );
-		}
-		
-		if ( isset( $markup['priceSpecification']['price'] ) ) {
-			$markup['priceSpecification']['price'] = wc_format_decimal( max( 0, $regular_price ), wc_get_price_decimals() );
-		}
-		
-		return $markup;
-	}
-
-	/**
-	 * Get adjustment info for a product
+	 * Get adjustment info for a product (used for customer messaging / debug)
 	 *
 	 * @param int $product_id Product ID.
 	 * @return array
 	 */
 	public function get_adjustment_info( $product_id ) {
 		$product_id = absint( $product_id );
-		
-		if ( $product_id <= 0 ) {
-			return array(
-				'has_adjustment'      => false,
-				'adjustment_percentage' => 0,
-				'message'             => '',
-			);
-		}
-
-		$product = wc_get_product( $product_id );
-		
-		if ( ! $product || ! $product->managing_stock() ) {
-			return array(
-				'has_adjustment'      => false,
-				'adjustment_percentage' => 0,
-				'message'             => '',
-			);
-		}
-
-		$stock_quantity = $product->get_stock_quantity();
-		
-		if ( null === $stock_quantity || $stock_quantity < 0 ) {
-			return array(
-				'has_adjustment'      => false,
-				'adjustment_percentage' => 0,
-				'message'             => '',
-			);
-		}
-
-		$settings = $this->get_settings();
-		$low_stock_threshold    = max( 0, intval( $settings['low_stock_threshold'] ) );
-		$low_increase_pct       = max( 0, floatval( $settings['low_stock_price_increase'] ) );
-		$medium_stock_threshold = max( 0, intval( $settings['medium_stock_threshold'] ) );
-		$medium_increase_pct    = max( 0, floatval( $settings['medium_stock_price_increase'] ) );
-		$high_stock_threshold   = max( 0, intval( $settings['high_stock_threshold'] ) );
-		$high_decrease_pct      = max( 0, floatval( $settings['high_stock_price_decrease'] ) );
-
-		$adjustment_percentage = 0;
-		$message               = '';
-
-		if ( $stock_quantity <= $low_stock_threshold ) {
-			$adjustment_percentage = $low_increase_pct;
-			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price increased by %d%% due to low stock', 'stockadaptix-pricing' ), $adjustment_percentage );
-		} elseif ( $stock_quantity <= $medium_stock_threshold ) {
-			$adjustment_percentage = $medium_increase_pct;
-			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price increased by %d%% due to limited stock', 'stockadaptix-pricing' ), $adjustment_percentage );
-		} elseif ( $stock_quantity >= $high_stock_threshold ) {
-			$adjustment_percentage = -$high_decrease_pct;
-			/* translators: 1: adjustment percentage */
-			$message = sprintf( __( 'Price decreased by %d%% due to high stock', 'stockadaptix-pricing' ), abs( $adjustment_percentage ) );
-		}
-
-		return array(
-			'has_adjustment'      => 0 !== $adjustment_percentage,
-			'adjustment_percentage' => $adjustment_percentage,
-			'message'             => $message,
+		$default    = array(
+			'has_adjustment'        => false,
+			'adjustment_percentage' => 0,
+			'message'               => '',
 		);
+		if ( $product_id <= 0 ) {
+			return $default;
+		}
+		$product = wc_get_product( $product_id );
+		if ( ! $product || ! $this->is_supported_product( $product ) ) {
+			return $default;
+		}
+		$stock = $this->resolve_stock_quantity( $product );
+		if ( null === $stock || $stock < 0 ) {
+			return $default;
+		}
+		$settings = self::get_settings();
+		foreach ( $settings['rules'] as $rule ) {
+			$matches = ( 'lte' === $rule['comparator'] && $stock <= $rule['threshold'] )
+				|| ( 'gte' === $rule['comparator'] && $stock >= $rule['threshold'] );
+			if ( $matches ) {
+				$signed_pct = 'decrease' === $rule['direction'] ? -$rule['percent'] : $rule['percent'];
+				$message    = 'increase' === $rule['direction']
+					/* translators: %d: percentage */
+					? sprintf( __( 'Price increased by %d%% based on current stock', 'stockadaptix-pricing' ), $rule['percent'] )
+					/* translators: %d: percentage */
+					: sprintf( __( 'Price decreased by %d%% based on current stock', 'stockadaptix-pricing' ), $rule['percent'] );
+				return array(
+					'has_adjustment'        => 0 !== (int) $rule['percent'],
+					'adjustment_percentage' => $signed_pct,
+					'message'               => $message,
+				);
+			}
+		}
+		return $default;
 	}
 
 	/**
 	 * Add adjusted price as order item meta for HPOS compatibility
 	 *
-	 * @param WC_Order_Item_Product $item The order item object.
+	 * @param object $item The order item object.
 	 * @param string $cart_item_key The cart item key.
-	 * @param array $values The cart item values.
-	 * @param WC_Order $order The order object.
+	 * @param array  $values The cart item values.
+	 * @param object $order The order object.
 	 */
 	public function add_order_item_meta( $item, $cart_item_key, $values, $order ) {
 		if ( isset( $values['dsp_adjusted_price'] ) ) {
@@ -508,61 +666,48 @@ class PricingService {
 	/**
 	 * Adjust order item totals display
 	 *
-	 * @param array $total_rows Order item totals.
-	 * @param WC_Order $order Order object.
-	 * @param bool $tax_display Tax display setting.
+	 * @param array  $total_rows Order item totals.
+	 * @param object $order Order object.
+	 * @param bool   $tax_display Tax display setting.
 	 * @return array
 	 */
 	public function adjust_order_item_totals( $total_rows, $order, $tax_display ) {
-		// This method can be used to adjust how order totals are displayed if needed
 		return $total_rows;
 	}
 
 	/**
-	 * Check if HPOS (High-Performance Order Storage) is enabled
+	 * Whether the current execution context should never be price-adjusted
 	 *
 	 * @return bool
 	 */
-	private function is_hpos_enabled() {
-		if ( ! class_exists( 'Automattic\WooCommerce\Utilities\OrderUtil' ) ) {
-			return false;
-		}
-		return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+	private function in_safe_context() {
+		return is_admin()
+			|| defined( 'DOING_AJAX' )
+			|| $this->is_order_processing_context();
 	}
 
 	/**
-	 * Check if we're in an order processing context that should not have prices modified
+	 * Check if we're inside an order create/update/save action
 	 *
 	 * @return bool
 	 */
 	private function is_order_processing_context() {
 		return doing_action( 'woocommerce_new_order' ) ||
-			   doing_action( 'woocommerce_update_order' ) ||
-			   doing_action( 'woocommerce_save_order' ) ||
-			   doing_action( 'woocommerce_rest_insert_shop_order_object' ) ||
-			   doing_action( 'woocommerce_gzd_shipment_created' );
+			doing_action( 'woocommerce_update_order' ) ||
+			doing_action( 'woocommerce_save_order' ) ||
+			doing_action( 'woocommerce_rest_insert_shop_order_object' ) ||
+			doing_action( 'woocommerce_gzd_shipment_created' );
 	}
 
 	/**
 	 * Setup email compatibility when email is being sent
 	 */
 	public function setup_email_compatibility() {
-		// In email contexts, temporarily disable price adjustments to show original prices
-		// This ensures emails show the actual charged prices rather than dynamic adjustments
+		// In email contexts, show prices actually charged rather than dynamic ones.
 		remove_filter( 'woocommerce_product_get_price', array( $this, 'adjust_price' ), 10 );
 		remove_filter( 'woocommerce_product_get_regular_price', array( $this, 'adjust_price' ), 10 );
+		remove_filter( 'woocommerce_product_variation_get_price', array( $this, 'adjust_price' ), 10 );
+		remove_filter( 'woocommerce_product_variation_get_regular_price', array( $this, 'adjust_price' ), 10 );
 		remove_filter( 'woocommerce_get_price_html', array( $this, 'adjust_price_html' ), 20 );
-	}
-
-	/**
-	 * Adjust email order totals for email improvements compatibility
-	 *
-	 * @param string $total Formatted order total.
-	 * @param WC_Order $order Order object.
-	 * @return string
-	 */
-	public function adjust_email_order_totals( $total, $order ) {
-		// This method can be used to adjust how order totals are displayed in emails if needed
-		return $total;
 	}
 }

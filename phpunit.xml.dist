@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	colors="true"
+	beStrictAboutOutputDuringTests="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	convertWarningsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertErrorsToExceptions="true"
+	failOnWarning="true"
+>
+	<testsuites>
+		<testsuite name="StockAdaptix Pricing">
+			<directory>tests/</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>

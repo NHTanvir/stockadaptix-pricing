@@ -17,3 +17,13 @@
 
 = 1.0.1 =
 - Fixed bug
+
+= 1.1.0 =
+* New: support for variable products (per-variation stock-based pricing)
+* New: unlimited pricing rule tiers (replaces fixed low/medium/high; legacy settings auto-migrated)
+* New: configurable price floor and ceiling caps
+* New: rounding modes — charm pricing (.99) and nearest integer
+* New: React-based admin settings page (@wordpress/components)
+* New: REST API endpoints for settings and live price preview
+* New: in-admin preview simulator — try (base price, stock) and see the engine output
+* New: PHPUnit unit tests for the pricing math

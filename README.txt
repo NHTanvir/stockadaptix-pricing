@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.0
 WC tested up to: 10.4.3
-Stable tag: 1.0.1
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,8 +20,11 @@ Prices can increase when stock is low and decrease when inventory is high, helpi
 
 ### Key Features
 * Automatically adjust prices based on stock quantity
-* Fully configurable stock thresholds and percentage adjustments
-* Works with WooCommerce simple products using stock management
+* Unlimited pricing rules — add as many tiers as you need
+* Works with simple products **and** variable product variations
+* Price floor and ceiling caps to keep adjusted prices in a safe range
+* Optional charm pricing (.99) and nearest-integer rounding
+* Modern React-based admin UI with a built-in preview simulator
 * Compatible with cart and checkout pricing
 * Optional customer messaging for price changes
 * Translation-ready
@@ -60,7 +63,7 @@ Yes. You can optionally display a custom message informing customers that prices
 Because this plugin modifies prices dynamically, it may conflict with other pricing plugins. We recommend testing compatibility before using them together.
 
 = Does the plugin support variable products? =
-Currently, only simple products are supported. Variable product support may be added in future releases.
+Yes. As of version 1.1.0, individual variations of variable products are adjusted based on their own stock levels (or the parent's stock if the variation inherits it). You can disable variation handling from the settings page if you prefer to limit adjustments to simple products only.
 
 == Screenshots ==
 1. Stock-based pricing settings page
@@ -71,3 +74,11 @@ Currently, only simple products are supported. Variable product support may be a
 * Initial public release
 = 1.0.1 =
 - Fixed bug
+= 1.1.0 =
+* Variable product support
+* Unlimited rule tiers (legacy three-tier settings auto-migrated)
+* Price floor / ceiling caps
+* Charm pricing and nearest-integer rounding
+* React-based admin settings page
+* REST API + price preview simulator
+* PHPUnit tests for core pricing logic
